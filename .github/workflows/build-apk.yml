@@ -23,7 +23,10 @@ jobs:
       - name: Download engine libs
         run: bash scripts/download_engine.sh android/app/src/main/jniLibs/arm64-v8a/
       - name: Build APK
-        run: flutter build apk --release --verbose 2>&1 | tail -60
+        run: flutter build apk --release
+      - name: Find APK
+        if: always()
+        run: find . -name "*.apk" 2>/dev/null; ls -la build/app/outputs/flutter-apk/ 2>/dev/null || true
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
