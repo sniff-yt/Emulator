@@ -22,7 +22,20 @@ extern "C" JNIEXPORT jboolean JNICALL
 Java_com_example_pc_1emulator_NativeBridge_loadEngineLibs(JNIEnv* env, jclass) {
     // Attempt to dynamically load the engine binaries.
     // If they are present in jniLibs/<abi>/, dlopen will succeed.
-    g_box64_handle = dlopen("libbox64.so", RTLD_NOW | RTLD_GLOBAL);
+    // Resolve the directory containing this native library (nativeLibraryDir) so we
+    // can load/exec the bundled engine binaries by absolute path (Android has no
+    // usable PATH for native binaries and SELinux blocks bare exec).
+    Dl_info info;
+    std::string libDir;
+    if (dladdr((void*)Java_com_example_pc_1emulator_NativeBridge_loadEngineLibs, &info) && info.dli_fname) {
+        std::string p(info.dli_fname);
+        size_t slash = p.find_last_of("/\\");
+        if (slash != std::string::npos) libDir = p.substr(0, slash);
+    }
+    if (libDir.empty()) libDir = ".";
+
+    std::string box64Path = libDir + "/libbox64.so";
+    g_box64_handle = dlopen(box64Path.c_str(), RTLD_NOW | RTLD_GLOBAL);
     if (g_box64_handle) {
         LOGI("Successfully loaded libbox64.so");
         return JNI_TRUE;
@@ -45,18 +58,27 @@ Java_com_example_pc_1emulator_NativeBridge_initEngine(JNIEnv* env, jclass, jstri
         }
     }
 
-    // In a real scenario, box64 and wine are executables.
-    // We exec them via the Android linker.
+    // Resolve nativeLibraryDir again in child (fork inherits, but recompute safely).
+    Dl_info info2;
+    std::string libDir2;
+    if (dladdr((void*)Java_com_example_pc_1emulator_NativeBridge_initEngine, &info2) && info2.dli_fname) {
+        std::string p(info2.dli_fname);
+        size_t slash = p.find_last_of("/\\");
+        if (slash != std::string::npos) libDir2 = p.substr(0, slash);
+    }
+    if (libDir2.empty()) libDir2 = ".";
+
+    std::string box64Path = libDir2 + "/libbox64.so";
+    std::string winePath  = libDir2 + "/libwine.so"; // Wine is bundled as a .so/executable
+
     g_pid = fork();
     if (g_pid == 0) {
-        // Child process: launch wine via box64
         setenv("WINEPREFIX", "/data/local/tmp/.wine", 1);
+        std::string ldpath = libDir2 + ":/data/local/tmp";
+        setenv("LD_LIBRARY_PATH", ldpath.c_str(), 1);
 
-        // Construct the command to run box64 with wine
-        // Note: box64 and wine binaries must be executable and in PATH or specified by absolute path
-        execlp("sh", "sh", "-c",
-               "export LD_LIBRARY_PATH=/data/app/*/lib/arm64:/data/local/tmp; "
-               "box64 wine \"$1\"", "sh", path, (char*)nullptr);
+        // exec box64 with absolute path to the bundled wine binary
+        execl(box64Path.c_str(), "box64", winePath.c_str(), path, (char*)nullptr);
         _exit(127);
     } else if (g_pid > 0) {
         LOGI("Launched emulation process pid=%d", g_pid);

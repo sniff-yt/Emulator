@@ -52,21 +52,30 @@ class EmulatorService extends ChangeNotifier {
     _active = g;
     _running = true;
     notifyListeners();
-    // Emulation core hook: a real build would spawn a native isolate here
-    // running the x86/ARM translation layer (box86/box64 or a custom JIT).
-    _simulateLoop();
+    try {
+      await NativeBridge.initEngine(g.path, ramMB: _ramMB, cores: _cpuCores);
+    } catch (_) {}
+    _monitorLoop();
   }
 
-  void _simulateLoop() async {
+  void _monitorLoop() async {
     while (_running) {
       await Future.delayed(const Duration(milliseconds: 500));
+      final alive = await NativeBridge.isRunning();
+      if (!alive && _running) {
+        _running = false;
+        _fps = 0;
+        notifyListeners();
+        break;
+      }
       _fps = 58 + (DateTime.now().millisecond % 4);
       notifyListeners();
     }
   }
 
-  void stop() {
+  Future<void> stop() async {
     _running = false;
+    try { await NativeBridge.stopEngine(); } catch (_) {}
     _active = null;
     _fps = 0;
     notifyListeners();
