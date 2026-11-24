@@ -28,7 +28,7 @@ class EmulatorService extends ChangeNotifier {
     final raw = sp.getString('games');
     if (raw != null) {
       final list = jsonDecode(raw) as List;
-      _games.addAll(list.map((e) => GameProfile.fromJson(e)));
+      _games.addAll(list.map((e) => GameProfile.fromJson(e as Map<String, dynamic>)));
     }
     _ramMB = sp.getInt('ram') ?? 4096;
     _cpuCores = sp.getInt('cores') ?? 4;

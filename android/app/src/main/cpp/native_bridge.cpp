@@ -79,7 +79,7 @@ Java_com_example_pc_1emulator_NativeBridge_initEngine(JNIEnv* env, jclass, jstri
         setenv("LD_LIBRARY_PATH", ldpath.c_str(), 1);
 
         // exec box64 with absolute path to the bundled wine binary
-        execl(box64Path.c_str(), "box64", winePath.c_str(), path, (char*)nullptr);
+        execl(box64Path.c_str(), box64Path.c_str(), winePath.c_str(), path, (char*)nullptr);
         _exit(127);
     } else if (g_pid > 0) {
         LOGI("Launched emulation process pid=%d", g_pid);

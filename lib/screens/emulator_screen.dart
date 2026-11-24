@@ -13,17 +13,20 @@ class EmulatorScreen extends StatefulWidget {
 }
 
 class _EmulatorScreenState extends State<EmulatorScreen> {
+  late final EmulatorService _svc;
+
   @override
   void initState() {
     super.initState();
+    _svc = context.read<EmulatorService>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<EmulatorService>().launch(widget.profile);
+      _svc.launch(widget.profile);
     });
   }
 
   @override
   void dispose() {
-    context.read<EmulatorService>().stop();
+    _svc.stop();
     super.dispose();
   }
 
