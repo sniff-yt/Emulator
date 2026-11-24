@@ -15,7 +15,7 @@ def flutterVersionName = localProperties.getProperty('flutter.versionName') ?: '
 
 android {
     namespace "com.example.pc_emulator"
-    compileSdk 33
+    compileSdk 35
     ndkVersion flutter.ndkVersion
 
     compileOptions {
