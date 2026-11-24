@@ -2,6 +2,7 @@
 #include <string>
 #include <android/log.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/wait.h>
 #include <cstdlib>
 #include <dlfcn.h>
