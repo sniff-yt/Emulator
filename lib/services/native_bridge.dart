@@ -20,4 +20,8 @@ class NativeBridge {
   static Future<void> stopEngine() async {
     await _channel.invokeMethod('stopEngine');
   }
+
+  static Future<bool> isRunning() async {
+    return await _channel.invokeMethod<bool>('isRunning') ?? false;
+  }
 }
