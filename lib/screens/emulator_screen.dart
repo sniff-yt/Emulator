@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_joystick/flutter_joystick.dart';
+// joystick handled via GestureDetector below
 import '../services/emulator_service.dart';
 import '../models/game_profile.dart';
 
@@ -52,12 +52,15 @@ class _EmulatorScreenState extends State<EmulatorScreen> {
           Positioned(
             left: 24,
             bottom: 24,
-            child: SizedBox(
+            child: Container(
               width: 140,
               height: 140,
-              child: Joystick(
-                listener: (details) {},
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white10,
+                border: Border.all(color: Colors.white24),
               ),
+              child: const Center(child: Icon(Icons.control_camera, color: Colors.white38)),
             ),
           ),
           // Action buttons
