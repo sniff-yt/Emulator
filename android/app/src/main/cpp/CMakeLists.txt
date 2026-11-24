@@ -4,4 +4,5 @@ project(pc_emulator_native)
 add_library(pc_emulator_native SHARED native_bridge.cpp)
 
 find_library(log-lib log)
-target_link_libraries(pc_emulator_native ${log-lib})
+find_library(dl-lib dl)
+target_link_libraries(pc_emulator_native ${log-lib} ${dl-lib})
