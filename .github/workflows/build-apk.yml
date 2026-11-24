@@ -34,12 +34,12 @@ jobs:
       - name: Locate APK
         if: always()
         run: |
-          find . -name "*.apk" -print 2>/dev/null
-          ls -la build/app/outputs/flutter-apk/ 2>/dev/null || true
+          find build -type f -name '*.apk' -print
 
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
-          path: android/app/build/outputs/flutter-apk/*.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
