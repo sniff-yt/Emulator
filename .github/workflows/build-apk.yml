@@ -53,5 +53,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp build/app/outputs/flutter-apk/app-release.apk PC-Emulator.apk
-          gh release delete latest --yes --cleanup-tag || true
-          gh release create latest PC-Emulator.apk --title "PC Emulator (latest build)" --notes "build ${{ github.run_number }} from ${GITHUB_SHA::7}. Install the APK, open it, tap Install to set up the engine." --latest
+          NOTES="build ${{ github.run_number }} from ${GITHUB_SHA::7}. Install the APK, open it, tap Install to set up the engine."
+          gh release view latest >/dev/null 2>&1 || gh release create latest --title "PC Emulator (latest build)" --notes "$NOTES" --latest
+          for t in 1 2 3 4; do gh release upload latest PC-Emulator.apk --clobber && break; echo "retry $t"; sleep 15; done
+          gh release edit latest --draft=false --latest --notes "$NOTES"
