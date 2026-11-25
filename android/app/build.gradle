@@ -45,6 +45,12 @@ android {
         }
     }
 
+    lint {
+        // Sideloaded app: targetSdk 28 is intentional (exec of helper binaries).
+        disable 'ExpiredTargetSdkVersion'
+        checkReleaseBuilds false
+    }
+
     buildTypes {
         release {
             signingConfig signingConfigs.debug
