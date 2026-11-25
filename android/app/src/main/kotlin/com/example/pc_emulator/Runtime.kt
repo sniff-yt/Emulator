@@ -22,6 +22,13 @@ class Runtime(private val ctx: Context, private val log: (String) -> Unit) {
     private val main = Handler(Looper.getMainLooper())
     private val procs = ConcurrentHashMap<String, Process>()
 
+    /** Tunables pushed from Dart (which can get them from the remote config, no APK update needed). */
+    @Volatile var extraEnv: Map<String, String> = emptyMap()
+    @Volatile var extraArgs: List<String> = emptyList()
+    /** Optional proot binary/loader downloaded at runtime (allowed because targetSdk is 28). */
+    @Volatile var prootOverride: String? = null
+    @Volatile var loaderOverride: String? = null
+
     val base: File get() = ctx.filesDir
     val rootfs: File get() = File(base, "debian")
     val prootTmp: File get() = File(base, "proot-tmp").apply { mkdirs() }
@@ -33,6 +40,10 @@ class Runtime(private val ctx: Context, private val log: (String) -> Unit) {
         "nativeLibDir" to libDir,
         "framebuffer" to File(rootfs, "tmp/fb/Xvfb_screen0").absolutePath,
     )
+
+    fun configure(env: Map<String, String>, args: List<String>, proot: String?, loader: String?) {
+        extraEnv = env; extraArgs = args; prootOverride = proot; loaderOverride = loader
+    }
 
     fun rootfsReady(): Boolean = File(rootfs, "bin/bash").exists() || File(rootfs, "usr/bin/bash").exists()
 
@@ -139,7 +150,7 @@ class Runtime(private val ctx: Context, private val log: (String) -> Unit) {
     private fun prootCommand(cmd: String): List<String> {
         val ext = "/storage/emulated/0"
         val args = mutableListOf(
-            "$libDir/libproot.so",
+            prootOverride?.takeIf { File(it).canExecute() } ?: "$libDir/libproot.so",
             "--kill-on-exit",
             "--link2symlink",
             "-0",
@@ -151,6 +162,7 @@ class Runtime(private val ctx: Context, private val log: (String) -> Unit) {
             "-b", "${rootfs.absolutePath}/tmp:/dev/shm",
             "-w", "/root",
         )
+        args += extraArgs
         if (File(ext).exists()) { args += listOf("-b", "$ext:/sdcard") }
         args += listOf(
             "/usr/bin/env", "-i",
@@ -165,8 +177,10 @@ class Runtime(private val ctx: Context, private val log: (String) -> Unit) {
     private fun builder(cmd: String): ProcessBuilder {
         val pb = ProcessBuilder(prootCommand(cmd)).redirectErrorStream(true)
         pb.environment().apply {
-            put("PROOT_LOADER", "$libDir/libproot_loader.so")
+            put("PROOT_LOADER", loaderOverride?.takeIf { File(it).exists() } ?: "$libDir/libproot_loader.so")
             put("PROOT_TMP_DIR", prootTmp.absolutePath)
+            put("LD_LIBRARY_PATH", libDir)
+            putAll(extraEnv)
         }
         return pb
     }

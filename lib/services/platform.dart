@@ -10,6 +10,9 @@ class NativePlatform {
 
   static Future<Map<String, String>> paths() async =>
       Map<String, String>.from(await _ch.invokeMethod<Map>('paths') ?? {});
+  static Future<void> configure(Map<String, String> env, List<String> args, {String? proot, String? loader}) =>
+      _ch.invokeMethod('configure', {'env': env, 'args': args, 'proot': proot, 'loader': loader});
+  static Future<void> openUrl(String url) => _ch.invokeMethod('openUrl', {'url': url});
   static Future<bool> rootfsReady() async => await _ch.invokeMethod<bool>('rootfsReady') ?? false;
   static Future<void> installRootfs(String url) => _ch.invokeMethod('installRootfs', {'url': url});
   static Future<int> run(String cmd) async => await _ch.invokeMethod<int>('run', {'cmd': cmd}) ?? -1;

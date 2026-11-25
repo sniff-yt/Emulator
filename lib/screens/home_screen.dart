@@ -22,6 +22,7 @@ class HomeScreen extends StatelessWidget {
       body: SafeArea(
         child: CustomScrollView(slivers: [
           SliverToBoxAdapter(child: _header(context, rt)),
+          if (rt.updateBuild != null) SliverToBoxAdapter(child: _updateBanner(rt)),
           SliverToBoxAdapter(child: _engineCard(context, rt)),
           SliverToBoxAdapter(child: _quickActions(context, ready)),
           SliverToBoxAdapter(
@@ -92,6 +93,24 @@ class HomeScreen extends StatelessWidget {
       ]),
     );
   }
+
+  Widget _updateBanner(RuntimeService rt) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
+          decoration: BoxDecoration(
+            color: AppColors.green.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.green.withOpacity(0.5)),
+          ),
+          child: Row(children: [
+            const Icon(Icons.system_update, color: AppColors.green),
+            const SizedBox(width: 12),
+            Expanded(child: Text('New app version ready (build ${rt.updateBuild})', style: const TextStyle(fontWeight: FontWeight.w600))),
+            TextButton(onPressed: rt.openUpdate, child: const Text('Update')),
+          ]),
+        ),
+      );
 
   Widget _engineCard(BuildContext context, RuntimeService rt) {
     final ready = rt.state == EngineState.ready;

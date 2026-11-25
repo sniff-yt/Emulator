@@ -41,6 +41,17 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "paths" -> result.success(runtime.paths())
                     "rootfsReady" -> result.success(runtime.rootfsReady())
+                    "configure" -> {
+                        @Suppress("UNCHECKED_CAST")
+                        val env = (call.argument<Map<String, Any?>>("env") ?: emptyMap()).mapValues { it.value.toString() }
+                        val args = (call.argument<List<Any?>>("args") ?: emptyList()).map { it.toString() }
+                        runtime.configure(env, args, call.argument<String>("proot"), call.argument<String>("loader"))
+                        result.success(true)
+                    }
+                    "openUrl" -> {
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(call.argument<String>("url")!!)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        result.success(true)
+                    }
                     "installRootfs" -> {
                         val url = call.argument<String>("url")!!
                         Thread {

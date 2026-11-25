@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/config.dart';
 import 'platform.dart';
+import 'remote_config.dart';
 
 enum EngineState { checking, notInstalled, installing, ready, failed }
 
@@ -31,6 +31,10 @@ class RuntimeService extends ChangeNotifier {
   StreamSubscription? _sub;
   Completer<void>? _displayReady;
   int? lastExitCode;
+  RemoteConfig? config;
+  int? updateBuild;
+  bool _noSeccomp = false;
+  bool _prootChecked = false;
 
   RuntimeService() {
     _sub = NativePlatform.events.listen(_onEvent, onError: (_) {});
@@ -45,6 +49,13 @@ class RuntimeService extends ChangeNotifier {
       device = await NativePlatform.deviceInfo();
     } catch (_) {}
     final sp = await SharedPreferences.getInstance();
+    _noSeccomp = sp.getBool('noSeccomp') ?? false;
+    config = await RemoteConfig.load();
+    await _applyConfig();
+    RemoteConfig.newerBuild().then((b) {
+      updateBuild = b;
+      notifyListeners();
+    });
     final installed = sp.getInt('setupVersion') == RuntimeConfig.setupVersion;
     final rootfs = await NativePlatform.rootfsReady().catchError((_) => false);
     state = installed && rootfs ? EngineState.ready : EngineState.notInstalled;
@@ -90,6 +101,33 @@ class RuntimeService extends ChangeNotifier {
     }
   }
 
+  Future<void> _applyConfig() async {
+    final c = config;
+    final env = <String, String>{...?c?.prootEnv};
+    if (_noSeccomp) env['PROOT_NO_SECCOMP'] = '1';
+    await NativePlatform.configure(env, c?.prootArgs ?? const []);
+  }
+
+  /// Make sure proot can start a program on this phone. If the kernel rejects
+  /// proot's seccomp mode ("Function not implemented"), switch it off and retry.
+  Future<void> _checkProot() async {
+    if (_prootChecked) return;
+    final start = logs.length;
+    var code = await NativePlatform.run('true');
+    final out = logs.skip(start).join('\n');
+    if (code != 0 && !_noSeccomp && (config?.noSeccompFallback ?? true)) {
+      _log('proot failed with seccomp on, retrying without it');
+      _noSeccomp = true;
+      (await SharedPreferences.getInstance()).setBool('noSeccomp', true);
+      await _applyConfig();
+      code = await NativePlatform.run('true');
+    }
+    if (code != 0) {
+      throw Exception('The Linux layer (proot) could not start on this phone. ${out.split('\n').where((l) => l.contains('error')).take(2).join(' ')}');
+    }
+    _prootChecked = true;
+  }
+
   /// Copy the runtime scripts from the app assets into the container.
   Future<void> _writeScripts() async {
     final root = paths['rootfs'];
@@ -97,7 +135,7 @@ class RuntimeService extends ChangeNotifier {
     final dir = Directory('$root/opt/pcemu');
     await dir.create(recursive: true);
     for (final f in ['setup.sh', 'session.sh', 'env.sh', 'input_daemon.py']) {
-      final data = await rootBundle.loadString('assets/runtime/$f');
+      final data = await (config ??= await RemoteConfig.load()).script(f);
       final file = File('${dir.path}/$f');
       await file.writeAsString(data);
     }
@@ -114,13 +152,17 @@ class RuntimeService extends ChangeNotifier {
     notifyListeners();
     try {
       paths = await NativePlatform.paths();
+      config = await RemoteConfig.load();
+      await _applyConfig();
       if (!await NativePlatform.rootfsReady()) {
-        await NativePlatform.installRootfs(RuntimeConfig.rootfsUrl);
+        await NativePlatform.installRootfs(_url('rootfsUrl', RuntimeConfig.rootfsUrl));
       }
       progress = 0.25;
+      status = 'Checking Linux layer';
+      notifyListeners();
+      await _checkProot();
       await _writeScripts();
-      final code = await NativePlatform.run(
-          'bash /opt/pcemu/setup.sh "${RuntimeConfig.wineUrl}" "${RuntimeConfig.dxvkUrl}" "${RuntimeConfig.mesaUrl}"');
+      final code = await NativePlatform.run(_setupCmd());
       if (code != 0) {
         throw Exception(error ?? 'Setup exited with code $code');
       }
@@ -139,7 +181,7 @@ class RuntimeService extends ChangeNotifier {
   /// Wipe the Windows prefix (keeps Linux + Wine), useful when a game breaks it.
   Future<int> resetWindows() async {
     await _writeScripts();
-    return NativePlatform.run('rm -rf /root/.wine /opt/pcemu/state/prefix && bash /opt/pcemu/setup.sh "${RuntimeConfig.wineUrl}" "${RuntimeConfig.dxvkUrl}" "${RuntimeConfig.mesaUrl}"');
+    return NativePlatform.run('rm -rf /root/.wine /opt/pcemu/state/prefix && ${_setupCmd()}');
   }
 
   Future<void> uninstall() async {
@@ -170,6 +212,9 @@ class RuntimeService extends ChangeNotifier {
     lastExitCode = null;
     logs.clear();
     notifyListeners();
+    config = await RemoteConfig.load();
+    await _applyConfig();
+    await _checkProot();
     await _writeScripts();
     _displayReady = Completer<void>();
     final quoted = exe == null ? '' : _q(exe);
@@ -194,6 +239,16 @@ class RuntimeService extends ChangeNotifier {
     session = SessionState.idle;
     notifyListeners();
   }
+
+  String _url(String key, String fallback) {
+    final v = config?.str(key) ?? '';
+    return v.isEmpty ? fallback : v;
+  }
+
+  String _setupCmd() => 'bash /opt/pcemu/setup.sh "${_url('wineUrl', RuntimeConfig.wineUrl)}" '
+      '"${_url('dxvkUrl', RuntimeConfig.dxvkUrl)}" "${_url('mesaUrl', RuntimeConfig.mesaUrl)}"';
+
+  Future<void> openUpdate() => NativePlatform.openUrl(RemoteConfig.apkUrl);
 
   static String _q(String s) => "'${s.replaceAll("'", "'\\''")}'";
 

@@ -33,7 +33,7 @@ jobs:
         run: bash scripts/fetch_proot.sh "$GITHUB_WORKSPACE/android/app/src/main/jniLibs/arm64-v8a"
 
       - name: Build APK
-        run: flutter build apk --release --target-platform android-arm64
+        run: flutter build apk --release --target-platform android-arm64 --build-number ${{ github.run_number }} --dart-define=BUILD_NUMBER=${{ github.run_number }}
 
       - name: Locate APK
         if: always()
@@ -54,4 +54,4 @@ jobs:
         run: |
           cp build/app/outputs/flutter-apk/app-release.apk PC-Emulator.apk
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest PC-Emulator.apk --title "PC Emulator (latest build)" --notes "Built from ${GITHUB_SHA::7}. Install the APK, open it, tap Install to set up the engine." --latest
+          gh release create latest PC-Emulator.apk --title "PC Emulator (latest build)" --notes "build ${{ github.run_number }} from ${GITHUB_SHA::7}. Install the APK, open it, tap Install to set up the engine." --latest

@@ -35,3 +35,7 @@ flutter build apk --release --target-platform android-arm64
 - `android/app/src/main/kotlin/.../Runtime.kt`: rootfs install, proot processes
 - `android/app/src/main/kotlin/.../Display.kt`: framebuffer to texture
 - `assets/runtime/`: `setup.sh`, `session.sh`, `env.sh`, `input_daemon.py`, which run inside Debian
+
+## Updates without reinstalling
+- `remote/config.json` (download links, proot env/args) and `assets/runtime/*` scripts are fetched from this repo's `main` branch every time the app sets up or starts a session. Push a fix here and the app picks it up on the next launch, with no new APK.
+- Changes to the Flutter/Kotlin code still need a new APK. CI publishes it as the `latest` release, and the app shows an "Update" banner when a newer build exists.
