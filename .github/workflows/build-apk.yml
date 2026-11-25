@@ -26,8 +26,8 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Download engine libs
-        run: bash scripts/download_engine.sh "$GITHUB_WORKSPACE/android/app/src/main/jniLibs/arm64-v8a"
+      - name: Bundle proot
+        run: bash scripts/fetch_proot.sh "$GITHUB_WORKSPACE/android/app/src/main/jniLibs/arm64-v8a"
 
       - name: Build APK
         run: flutter build apk --release --target-platform android-arm64
@@ -40,6 +40,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk
+          name: pc-emulator-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error

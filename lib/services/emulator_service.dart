@@ -1,83 +1,106 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../core/config.dart';
 import '../models/game_profile.dart';
-import 'native_bridge.dart';
-import 'dart:convert';
 
+/// Game library and user settings.
 class EmulatorService extends ChangeNotifier {
   final List<GameProfile> _games = [];
-  bool _running = false;
-  GameProfile? _active;
-  double _fps = 0;
-  int _ramMB = 4096;
-  int _cpuCores = 4;
+  SharedPreferences? _sp;
 
-  List<GameProfile> get games => List.unmodifiable(_games);
-  bool get running => _running;
-  GameProfile? get active => _active;
-  double get fps => _fps;
-  int get ramMB => _ramMB;
-  int get cpuCores => _cpuCores;
+  // Settings
+  String resolution = '1280x720';
+  String renderer = 'gpu'; // default for new games and the desktop
+  int fpsCap = 60;
+  double controlsOpacity = 0.55;
+  double buttonScale = 1.0;
+  double mouseSensitivity = 1.4;
+  double lookSensitivity = 1.6;
+  bool haptics = true;
+  String touchMode = 'trackpad'; // trackpad | direct | gamepad
+  String stickKeys = 'wasd'; // wasd | arrows
+
+  List<GameProfile> get games {
+    final g = List<GameProfile>.from(_games);
+    g.sort((a, b) => (b.lastPlayed ?? b.addedAt).compareTo(a.lastPlayed ?? a.addedAt));
+    return List.unmodifiable(g);
+  }
+
+  Resolution get defaultResolution => Resolution.parse(resolution);
 
   EmulatorService() {
     _load();
   }
 
   Future<void> _load() async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = _sp = await SharedPreferences.getInstance();
     final raw = sp.getString('games');
     if (raw != null) {
-      final list = jsonDecode(raw) as List;
-      _games.addAll(list.map((e) => GameProfile.fromJson(e as Map<String, dynamic>)));
+      try {
+        final list = jsonDecode(raw) as List;
+        _games.addAll(list.map((e) => GameProfile.fromJson(Map<String, dynamic>.from(e as Map))));
+      } catch (_) {}
     }
-    _ramMB = sp.getInt('ram') ?? 4096;
-    _cpuCores = sp.getInt('cores') ?? 4;
+    resolution = sp.getString('resolution') ?? resolution;
+    renderer = sp.getString('renderer') ?? renderer;
+    fpsCap = sp.getInt('fpsCap') ?? fpsCap;
+    controlsOpacity = sp.getDouble('controlsOpacity') ?? controlsOpacity;
+    buttonScale = sp.getDouble('buttonScale') ?? buttonScale;
+    mouseSensitivity = sp.getDouble('mouseSensitivity') ?? mouseSensitivity;
+    lookSensitivity = sp.getDouble('lookSensitivity') ?? lookSensitivity;
+    haptics = sp.getBool('haptics') ?? haptics;
+    touchMode = sp.getString('touchMode') ?? touchMode;
+    stickKeys = sp.getString('stickKeys') ?? stickKeys;
     notifyListeners();
   }
 
-  Future<void> _save() async {
-    final sp = await SharedPreferences.getInstance();
-    await sp.setString('games', jsonEncode(_games.map((g) => g.toJson()).toList()));
-    await sp.setInt('ram', _ramMB);
-    await sp.setInt('cores', _cpuCores);
+  Future<void> _saveGames() async {
+    await _sp?.setString('games', jsonEncode(_games.map((g) => g.toJson()).toList()));
   }
 
-  void setRam(int v) { _ramMB = v; _save(); notifyListeners(); }
-  void setCores(int v) { _cpuCores = v; _save(); notifyListeners(); }
+  Future<void> _saveSettings() async {
+    final sp = _sp;
+    if (sp == null) return;
+    await sp.setString('resolution', resolution);
+    await sp.setString('renderer', renderer);
+    await sp.setInt('fpsCap', fpsCap);
+    await sp.setDouble('controlsOpacity', controlsOpacity);
+    await sp.setDouble('buttonScale', buttonScale);
+    await sp.setDouble('mouseSensitivity', mouseSensitivity);
+    await sp.setDouble('lookSensitivity', lookSensitivity);
+    await sp.setBool('haptics', haptics);
+    await sp.setString('touchMode', touchMode);
+    await sp.setString('stickKeys', stickKeys);
+  }
 
-  void addGame(GameProfile g) { _games.add(g); _save(); notifyListeners(); }
-  void removeGame(String id) { _games.removeWhere((g) => g.id == id); _save(); notifyListeners(); }
-
-  Future<void> launch(GameProfile g) async {
-    _active = g;
-    _running = true;
+  void update(void Function(EmulatorService s) change) {
+    change(this);
+    _saveSettings();
     notifyListeners();
-    try {
-      await NativeBridge.initEngine(g.path, ramMB: _ramMB, cores: _cpuCores);
-    } catch (_) {}
-    _monitorLoop();
   }
 
-  void _monitorLoop() async {
-    while (_running) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      final alive = await NativeBridge.isRunning();
-      if (!alive && _running) {
-        _running = false;
-        _fps = 0;
-        notifyListeners();
-        break;
-      }
-      _fps = 58 + (DateTime.now().millisecond % 4);
-      notifyListeners();
-    }
-  }
-
-  Future<void> stop() async {
-    _running = false;
-    try { await NativeBridge.stopEngine(); } catch (_) {}
-    _active = null;
-    _fps = 0;
+  void addGame(GameProfile g) {
+    _games.add(g);
+    _saveGames();
     notifyListeners();
+  }
+
+  void updateGame(GameProfile g) {
+    final i = _games.indexWhere((x) => x.id == g.id);
+    if (i >= 0) _games[i] = g;
+    _saveGames();
+    notifyListeners();
+  }
+
+  void removeGame(String id) {
+    _games.removeWhere((g) => g.id == id);
+    _saveGames();
+    notifyListeners();
+  }
+
+  void markPlayed(String id) {
+    final i = _games.indexWhere((x) => x.id == id);
+    if (i >= 0) updateGame(_games[i].copyWith(lastPlayed: DateTime.now()));
   }
 }

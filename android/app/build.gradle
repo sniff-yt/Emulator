@@ -19,38 +19,43 @@ android {
     ndkVersion flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '17'
     }
 
     defaultConfig {
         applicationId "com.example.pc_emulator"
-        minSdk 21
-        targetSdk 35
+        minSdk 26
+        // targetSdk 28 keeps exec() of helper binaries from the app's data dir allowed
+        // (W^X restriction applies from 29). proot itself runs from nativeLibraryDir.
+        targetSdk 28
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
-        externalNativeBuild {
-            cmake {
-                cppFlags "-std=c++17"
-            }
-        }
+        ndk { abiFilters 'arm64-v8a' }
     }
 
-    externalNativeBuild {
-        cmake {
-            path "src/main/cpp/CMakeLists.txt"
+    packagingOptions {
+        jniLibs {
+            // proot + loader must exist as real files in nativeLibraryDir so they can be exec'd
+            useLegacyPackaging true
         }
     }
 
     buildTypes {
         release {
             signingConfig signingConfigs.debug
+            minifyEnabled false
+            shrinkResources false
         }
     }
+}
+
+dependencies {
+    implementation 'org.apache.commons:commons-compress:1.26.2'
 }
 
 flutter {
