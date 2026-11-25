@@ -1,11 +1,12 @@
 {
   "configVersion": 1,
-  "rootfsUrl": "https://raw.githubusercontent.com/debuerreotype/docker-debian-artifacts/dist-arm64v8/trixie/slim/oci/blobs/rootfs.tar.gz",
+  "rootfsUrl": "https://github.com/sniff-yt/Emulator/releases/download/rootfs/rootfs-arm64.tar.gz",
   "wineUrl": "https://github.com/Kron4ek/Wine-Builds/releases/download/11.0/wine-11.0-staging-amd64-wow64.tar.xz",
   "dxvkUrl": "https://github.com/doitsujin/dxvk/releases/download/v2.7.1/dxvk-2.7.1.tar.gz",
   "mesaUrl": "https://github.com/lfdevs/mesa-for-android-container/releases/download/mesa-27.0.0-devel-20261025-r2/mesa-for-android-container_27.0.0-devel-20261025-r2_debian_trixie_arm64.tar.gz",
   "scriptsBase": "https://raw.githubusercontent.com/sniff-yt/Emulator/main/assets/runtime/",
   "prootEnv": {},
   "prootArgs": [],
-  "noSeccompFallback": true
+  "noSeccompFallback": true,
+  "debianRootfsUrl": "https://raw.githubusercontent.com/debuerreotype/docker-debian-artifacts/dist-arm64v8/trixie/slim/oci/blobs/rootfs.tar.gz"
 }
