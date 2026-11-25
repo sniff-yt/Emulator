@@ -1,0 +1,40 @@
+name: Build ready-made Linux image
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'assets/runtime/**'
+      - 'remote/config.json'
+      - 'scripts/build_rootfs.sh'
+      - '.github/workflows/build-rootfs.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rootfs
+  cancel-in-progress: true
+
+jobs:
+  rootfs:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image (full setup done here instead of on the phone)
+        run: |
+          mkdir -p out
+          docker run --rm -e GITHUB_SHA -v "$PWD:/src:ro" -v "$PWD/out:/out" debian:trixie-slim bash /src/scripts/build_rootfs.sh
+          ls -la out
+          test -s out/rootfs-arm64.tar.gz
+      - name: Publish image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete rootfs --yes --cleanup-tag || true
+          gh release create rootfs out/rootfs-arm64.tar.gz out/setup.log \
+            --title "Ready-made Linux image" \
+            --notes "Debian + box64 + Wine + Turnip + DXVK + desktop + Firefox, already set up. Built from ${GITHUB_SHA::7}." \
+            --latest=false
