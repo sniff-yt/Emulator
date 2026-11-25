@@ -23,11 +23,11 @@ if [ "$1" = "gpu" ] && [ -f /usr/share/vulkan/icd.d/freedreno_icd.aarch64.json ]
   # Xvfb has no DRI3, so present frames through Mesa's CPU (software) WSI path
   export MESA_VK_WSI_DEBUG=sw
   export MESA_VK_WSI_PRESENT_MODE=mailbox
-  export WINEDLLOVERRIDES="d3d8,d3d9,d3d10core,d3d11,dxgi=n,b"
+  export WINEDLLOVERRIDES="d3d8,d3d9,d3d10core,d3d11,dxgi=n,b;mscoree,mshtml,winemenubuilder.exe=d"
   export PCEMU_RENDERER=gpu
 else
   export GALLIUM_DRIVER=llvmpipe
   export LIBGL_ALWAYS_SOFTWARE=1
-  export WINEDLLOVERRIDES="d3d8,d3d9,d3d10core,d3d11,dxgi=b"
+  export WINEDLLOVERRIDES="d3d8,d3d9,d3d10core,d3d11,dxgi=b;mscoree,mshtml,winemenubuilder.exe=d"
   export PCEMU_RENDERER=software
 fi

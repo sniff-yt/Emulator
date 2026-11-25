@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/theme.dart';
+import '../services/platform.dart';
 import '../services/runtime_service.dart';
 
 /// Installs the engine: Debian, desktop, box64, Turnip, Wine, DXVK.
@@ -22,6 +23,18 @@ class _SetupScreenState extends State<SetupScreen> {
     'DXVK',
     'Windows environment',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    NativePlatform.keepScreenOn(true);
+  }
+
+  @override
+  void dispose() {
+    NativePlatform.keepScreenOn(false);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

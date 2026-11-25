@@ -22,8 +22,8 @@ if ! has base; then
     xvfb x11-utils x11-xserver-utils xdotool dbus-x11 \
     xfwm4 xfce4-panel xfdesktop4 xfce4-session xfce4-settings xfconf thunar xfce4-terminal \
     adwaita-icon-theme-legacy fonts-dejavu-core fonts-liberation \
-    python3 python3-xlib || fail "desktop install failed"
-  done_ base
+    python3 python3-xlib openbox tint2 pcmanfm lxterminal firefox-esr || fail "desktop install failed"
+  done_ base; done_ desktop2
 fi
 
 if ! has libs; then

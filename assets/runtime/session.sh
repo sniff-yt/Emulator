@@ -19,24 +19,43 @@ xsetroot -solid "#0d0d14" 2>/dev/null
 echo "@@DISPLAY_READY"
 if [ "$MODE" = "desktop" ]; then
   export XDG_RUNTIME_DIR=/tmp/xdg; mkdir -p $XDG_RUNTIME_DIR; chmod 700 $XDG_RUNTIME_DIR
-  # Desktop shortcut for Windows programs
-  mkdir -p /root/Desktop
-  cat > /root/Desktop/wine-explorer.desktop <<'D'
-[Desktop Entry]
-Type=Application
-Name=Windows Explorer
-Exec=bash -lc "source /opt/pcemu/env.sh $PCEMU_RENDERER; box64 /opt/wine/bin/wine explorer"
-Icon=folder
-D
-  cat > /root/Desktop/winecfg.desktop <<'D'
-[Desktop Entry]
-Type=Application
-Name=Wine Settings
-Exec=bash -lc "source /opt/pcemu/env.sh $PCEMU_RENDERER; box64 /opt/wine/bin/wine winecfg"
-Icon=preferences-system
-D
-  chmod +x /root/Desktop/*.desktop
-  dbus-launch --exit-with-session xfce4-session
+  ST=/opt/pcemu/state
+  # One-time upgrade: light desktop (few background processes) + Firefox.
+  if [ ! -f $ST/desktop2 ]; then
+    echo "Installing light desktop and Firefox (one time, ~150 MB)"
+    xmessage -center -buttons "" "Installing the browser and a lighter desktop (one time, about 150 MB). Keep the app open, this takes a few minutes..." &
+    MPID=$!
+    { apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        openbox tint2 pcmanfm lxterminal firefox-esr fonts-noto-color-emoji; } >/tmp/desktop-update.log 2>&1 \
+      && touch $ST/desktop2 || echo "Desktop update failed: $(tail -2 /tmp/desktop-update.log)"
+    kill $MPID 2>/dev/null
+  fi
+  # Newest desktop setup from the repo (older app versions don't ship this file)
+  wget -q -T 10 -O /tmp/desktop_files.sh "https://raw.githubusercontent.com/sniff-yt/Emulator/main/assets/runtime/desktop_files.sh" \
+    && [ -s /tmp/desktop_files.sh ] && mv /tmp/desktop_files.sh /opt/pcemu/desktop_files.sh
+  [ -f /opt/pcemu/desktop_files.sh ] && bash /opt/pcemu/desktop_files.sh "$PCEMU_RENDERER"
+  eval "$(dbus-launch --sh-syntax)"
+  declare -A PIDS; declare -A TRIES
+  launch() { "$@" >/dev/null 2>&1 & PIDS[$1]=$!; }
+  if [ -f $ST/desktop2 ]; then
+    launch openbox
+    launch pcmanfm --desktop
+    launch tint2
+  else
+    launch xfwm4
+    launch xfdesktop
+    launch xfce4-panel
+  fi
+  # Keep the desktop up until you quit from the app; bring back any part that crashes.
+  while kill -0 $XPID 2>/dev/null; do
+    sleep 3
+    for k in "${!PIDS[@]}"; do
+      if ! kill -0 "${PIDS[$k]}" 2>/dev/null && [ "${TRIES[$k]:-0}" -lt 5 ]; then
+        TRIES[$k]=$(( ${TRIES[$k]:-0} + 1 ))
+        case $k in pcmanfm) launch pcmanfm --desktop ;; *) launch $k ;; esac
+      fi
+    done
+  done
 else
   cd "$(dirname "$EXE")" 2>/dev/null
   echo "Launching $EXE"

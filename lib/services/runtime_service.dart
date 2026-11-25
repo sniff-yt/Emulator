@@ -134,7 +134,7 @@ class RuntimeService extends ChangeNotifier {
     if (root == null) return;
     final dir = Directory('$root/opt/pcemu');
     await dir.create(recursive: true);
-    for (final f in ['setup.sh', 'session.sh', 'env.sh', 'input_daemon.py']) {
+    for (final f in ['setup.sh', 'session.sh', 'env.sh', 'input_daemon.py', 'desktop_files.sh']) {
       final data = await (config ??= await RemoteConfig.load()).script(f);
       final file = File('${dir.path}/$f');
       await file.writeAsString(data);
