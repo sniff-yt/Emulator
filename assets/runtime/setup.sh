@@ -38,6 +38,22 @@ if ! has libs; then
   done_ libs
 fi
 
+# Debian's box64 (0.3.4) is too old for Wine 11 ("could not load kernel32.dll").
+# Replace it with a current build made for Linux-in-proot on Android.
+if ! has box64new; then
+  step 3 "Updating box64 to the latest build"
+  B64_REPO="${BOX64_REPO:-https://pi-apps-coders.github.io/box64-debs/debian}"
+  B64_PKG="${BOX64_PKG:-box64-android}"
+  f=$(wget -q -O - "$B64_REPO/Packages" | awk -v p="$B64_PKG" '$1=="Package:"{c=$2} c==p&&$1=="Filename:"{x=$2} END{print x}')
+  [ -n "$f" ] || fail "Could not find a newer box64 build (check your internet)"
+  wget -q -O /tmp/box64.deb "$B64_REPO/${f#./}" || fail "box64 download failed"
+  dpkg -i --force-overwrite --force-conflicts /tmp/box64.deb || fail "box64 install failed"
+  rm -f /tmp/box64.deb; hash -r
+  box64 --version 2>&1 | head -1
+  rm -rf /root/.wine "$STATE/prefix"
+  done_ box64new
+fi
+
 if ! has turnip; then
   step 4 "Installing Turnip GPU driver (Adreno)"
   if wget -q -O /tmp/mesa.tgz "$MESA_URL" && tar -xzf /tmp/mesa.tgz -C / && ldconfig; then
