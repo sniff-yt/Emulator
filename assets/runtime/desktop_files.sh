@@ -35,6 +35,8 @@ pref("browser.download.useDownloadDir", true);
 pref("browser.download.always_ask_before_handling_new_types", false);
 pref("browser.download.start_downloads_in_tmp_dir", false);
 P
+# Also put it where Firefox always reads default prefs
+[ -d /usr/lib/firefox-esr/defaults/pref ] && cp /etc/firefox-esr/pcemu.js /usr/lib/firefox-esr/defaults/pref/pcemu.js
 
 app() { # file name exec icon
   cat > "/root/Desktop/$1.desktop" <<D
