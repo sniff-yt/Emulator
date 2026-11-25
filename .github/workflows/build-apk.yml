@@ -5,6 +5,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -43,3 +46,12 @@ jobs:
           name: pc-emulator-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
+
+      - name: Publish latest APK
+        if: success() && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk PC-Emulator.apk
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest PC-Emulator.apk --title "PC Emulator (latest build)" --notes "Built from ${GITHUB_SHA::7}. Install the APK, open it, tap Install to set up the engine." --latest
