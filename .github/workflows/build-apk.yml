@@ -22,22 +22,19 @@ jobs:
           channel: stable
           cache: true
 
+      # The Flutter project lives at the repo root (no subfolder).
       - name: Get dependencies
-        working-directory: pc_emulator_android
         run: flutter pub get
 
       - name: Download engine libs
-        working-directory: pc_emulator_android
-        run: bash ../scripts/download_engine.sh android/app/src/main/jniLibs/arm64-v8a/
+        run: bash scripts/download_engine.sh "$GITHUB_WORKSPACE/android/app/src/main/jniLibs/arm64-v8a"
 
       - name: Build APK
-        working-directory: pc_emulator_android
-        run: flutter build apk --release --verbose
+        run: flutter build apk --release --target-platform android-arm64
 
       - name: Locate APK
         if: always()
-        run: |
-          find build -type f -name '*.apk' -print
+        run: find build android -type f -name '*.apk' -print || true
 
       - name: Upload APK
         if: success()

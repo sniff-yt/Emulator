@@ -9,31 +9,24 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        System.loadLibrary("pc_emulator_native")
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channel).setMethodCallHandler { call, result ->
-            when (call.method) {
-                "hello" -> result.success(nativeHello())
-                "initEngine" -> {
-                    val gamePath = call.argument<String>("gamePath") ?: ""
-                    val ramMB = call.argument<Int>("ramMB") ?: 2048
-                    val cores = call.argument<Int>("cores") ?: 2
-                    result.success(nativeInitEngine(gamePath, ramMB, cores))
+            try {
+                when (call.method) {
+                    "hello" -> result.success(NativeBridge.hello())
+                    "initEngine" -> {
+                        val gamePath = call.argument<String>("gamePath") ?: ""
+                        val ramMB = call.argument<Int>("ramMB") ?: 2048
+                        val cores = call.argument<Int>("cores") ?: 2
+                        result.success(NativeBridge.initEngine(gamePath, ramMB, cores))
+                    }
+                    "stopEngine" -> { NativeBridge.stopEngine(); result.success(null) }
+                    "isRunning" -> result.success(NativeBridge.isRunning())
+                    "loadEngineLibs" -> result.success(NativeBridge.loadEngineLibs())
+                    else -> result.notImplemented()
                 }
-                "stopEngine" -> { nativeStopEngine(); result.success(null) }
-                "isRunning" -> result.success(nativeIsRunning())
-                "loadEngineLibs" -> result.success(nativeLoadEngineLibs())
-                else -> result.notImplemented()
+            } catch (e: Throwable) {
+                result.error("NATIVE_ERROR", e.message, null)
             }
         }
-    }
-
-    private external fun nativeHello(): String
-    private external fun nativeInitEngine(gamePath: String, ramMB: Int, cores: Int): Int
-    private external fun nativeStopEngine()
-    private external fun nativeIsRunning(): Boolean
-    private external fun nativeLoadEngineLibs(): Boolean
-
-    companion object {
-        init { System.loadLibrary("pc_emulator_native") }
     }
 }
