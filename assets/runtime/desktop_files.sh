@@ -29,6 +29,11 @@ pref("browser.aboutwelcome.enabled", false);
 pref("datareporting.policy.dataSubmissionEnabled", false);
 pref("toolkit.telemetry.enabled", false);
 pref("browser.startup.homepage", "https://www.google.com");
+pref("browser.download.folderList", 2);
+pref("browser.download.dir", "/root/Desktop");
+pref("browser.download.useDownloadDir", true);
+pref("browser.download.always_ask_before_handling_new_types", false);
+pref("browser.download.start_downloads_in_tmp_dir", false);
 P
 
 app() { # file name exec icon
