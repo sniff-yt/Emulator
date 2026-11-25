@@ -86,6 +86,9 @@ if ! has prefix; then
   Xvfb :9 -screen 0 1024x768x24 -nolisten tcp -extension MIT-SHM >/dev/null 2>&1 &
   XPID=$!; sleep 2
   echo "Creating Windows files. This can take 5-15 minutes on a phone, keep the app open."
+  # Skip the Mono/Gecko installer popups (they hang with no one to click them)
+  # and keep the number of background processes low (Android kills apps that spawn too many).
+  export WINEDLLOVERRIDES="mscoree=d;mshtml=d;winemenubuilder.exe=d"
   DISPLAY=:9 timeout 1200 box64 /opt/wine/bin/wine wineboot -i || echo "wineboot returned non-zero"
   DISPLAY=:9 timeout 180 box64 /opt/wine/bin/wineserver -w || DISPLAY=:9 box64 /opt/wine/bin/wineserver -k || true
   kill $XPID 2>/dev/null
