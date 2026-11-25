@@ -33,8 +33,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete rootfs --yes --cleanup-tag || true
-          gh release create rootfs out/rootfs-arm64.tar.gz out/setup.log \
-            --title "Ready-made Linux image" \
-            --notes "Debian + box64 + Wine + Turnip + DXVK + desktop + Firefox, already set up. Built from ${GITHUB_SHA::7}." \
-            --latest=false
+          gh release view rootfs >/dev/null 2>&1 || gh release create rootfs --title "Ready-made Linux image" --notes "starting" --latest=false
+          for f in out/rootfs-arm64.tar.gz out/setup.log; do
+            for t in 1 2 3 4; do gh release upload rootfs "$f" --clobber && break; echo "retry $t"; sleep 20; done
+          done
+          gh release edit rootfs --draft=false --latest=false --notes "Debian + box64 + Wine + Turnip + DXVK + desktop + Firefox, already set up. Built from ${GITHUB_SHA::7}."
